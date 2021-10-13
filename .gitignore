@@ -2,3 +2,4 @@ BlurCar2
 Bolt
 Liquor
 __pycache__/
+.pylint.d
