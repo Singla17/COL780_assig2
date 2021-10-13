@@ -5,7 +5,13 @@ COL780 Assigment-2
 Somanshu Singla 2018EE10314
 Lakshya Tangri  2018EE10222
 """
+import cv2
 
+def show_img(img):
+    cv2.imshow("Mask",img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
 def get_bounding_box_dims(txt_file_content,line_no):
     """
     Inputs: txt_file- is the contents of the input file from which we are supposed to read broken line wise
