@@ -21,9 +21,14 @@ def get_bounding_box_dims(txt_file_content,line_no):
     """
     
     string_form = txt_file_content[line_no-1]
-    dims_array = string_form.split(",")
-    for i in range(len(dims_array)):
-        dims_array[i]= int(dims_array[i])
+    try:
+        dims_array = string_form.split(",")
+        for i in range(len(dims_array)):
+            dims_array[i]= int(dims_array[i])
+    except:
+        dims_array = string_form.split()
+        for i in range(len(dims_array)):
+            dims_array[i]= int(dims_array[i])
     
     dims_array[2]= dims_array[0]+dims_array[2]
     dims_array[3]= dims_array[3]+dims_array[1]
