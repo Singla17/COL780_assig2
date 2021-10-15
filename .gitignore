@@ -3,3 +3,8 @@ Bolt
 Liquor
 __pycache__/
 .pylint.d
+.ipynb_checkpoints
+.spyproject
+__MACOSX
+A2
+Experiments.ipynb
