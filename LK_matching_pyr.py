@@ -10,40 +10,9 @@ import os
 import numpy as np
 from matplotlib import pyplot as plt
 from utils import get_bounding_box_dims,IOU,affine_Inv
-
-
-def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh):
-    
-    image_list = os.listdir(inp_path)
-    org_image = cv2.imread(os.path.join(inp_path,image_list[0]))
-    gt_file = open(gt_path,'r')
-    gt_file_content = gt_file.readlines()
-    gt_box_dims = get_bounding_box_dims(gt_file_content, 1)
-    template = org_image[gt_box_dims[1]:gt_box_dims[3],gt_box_dims[0]:gt_box_dims[2]]
-    
-    template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-    t_shape=template.shape
-    iou_sum = 0.0
-    
-    for i in range(1,len(image_list)):
-
-        frame = cv2.imread(os.path.join(inp_path,image_list[i]))
-        frame = cv2.bilateralFilter(frame,15,75,75)
-        rows, cols, ch = frame.shape
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        # gt_box_dims = get_bounding_box_dims(gt_file_content, i)
-        box_pred = [0,0,0,0]
-        
-        """Initialization for affine"""
-        # p = np.zeros([1,6], dtype = np.float64)
-        W = np.array([[1,0,0],
-                    [0, 1,0]],dtype = np.float64)
-        # thresh=.025
+def getTransform(W,thresh,frame,template,gt_box_dims):
         error=1
         itr=0
-        errors=[]
-        x=[]
-        ssd=0
         while(error > thresh):
             """Warping """
             frame = cv2.warpAffine(frame, W, (frame.shape[1], frame.shape[0]))
@@ -105,10 +74,8 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh):
                 break
             W= W + np.array([[delp[0],delp[2],delp[4]], [delp[1],delp[3],delp[5]]]) 
             
-            errors.append(error)
             itr+=1
-            x.append(itr)
-        # print(len(errors))
+                  # print(len(errors))
         # print(len(x1))
         # plt.plot(x,errors)
         cornerPoints=np.array([[gt_box_dims[0],gt_box_dims[1]],[gt_box_dims[2],gt_box_dims[1]],[gt_box_dims[1],gt_box_dims[3]],[gt_box_dims[2],gt_box_dims[3]]])
@@ -121,6 +88,63 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh):
         
         
         box_pred =[plotPts[0][0],plotPts[0][1],plotPts[-1][0],plotPts[-1][1]] 
+        return W,box_pred
+        
+
+def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh,pyr_len=3):
+    
+    image_list = os.listdir(inp_path)
+    org_image = cv2.imread(os.path.join(inp_path,image_list[0]))
+    gt_file = open(gt_path,'r')
+    gt_file_content = gt_file.readlines()
+    gt_box_dims = get_bounding_box_dims(gt_file_content, 1)
+    template = org_image[gt_box_dims[1]:gt_box_dims[3],gt_box_dims[0]:gt_box_dims[2]]
+    
+    template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+    
+    iou_sum = 0.0
+    
+    for i in range(1,len(image_list)):
+
+        frame = cv2.imread(os.path.join(inp_path,image_list[i]))
+        frame = cv2.bilateralFilter(frame,15,75,75)
+        rows, cols, ch = frame.shape
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        box_pred = [0,0,0,0]
+        
+   
+       
+        
+        
+     
+        scaled_frames=[frame]
+        scaled_templates=[template]
+        scaled_gt_box_dims=[gt_box_dims]
+        W = np.array([[1,0,0],
+                    [0, 1,0]],dtype = np.float64)
+        
+        for pyr in range(pyr_len):
+            frame=cv2.pyrDown(frame)
+            template=cv2.pyrDown(template)
+            scaled_frames.append(frame)
+            scaled_templates.append(template)
+            temp=[]
+            for l in range(2):
+                temp.append((scaled_gt_box_dims[-1][l]+1)//2)
+            temp_ht=(scaled_gt_box_dims[-1][2]-scaled_gt_box_dims[-1][0]+1)//2
+            temp_width=(scaled_gt_box_dims[-1][3]-scaled_gt_box_dims[-1][1]+1)//2
+            temp.append(temp[0]+temp_ht)
+            temp.append(temp[1]+temp_width)
+            scaled_gt_box_dims.append(temp)
+          
+            
+        for idx in range(len(scaled_frames)-1,-1,-1):
+            frame=scaled_frames[idx]
+            template=scaled_templates[idx]
+            gt_box_dims=scaled_gt_box_dims[idx]
+            W,box_pred=getTransform(W,thresh,frame,template,gt_box_dims)
+            
+        
         
         
                     
@@ -129,14 +153,7 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh):
         box_gt= get_bounding_box_dims(gt_file_content, i+1)
         iou_sum += IOU(box_gt,box_pred)
         
-        # diff = template - input_frame
-        # ssd=np.sum(np.multiply(diff,diff))
-        # if(ssd < 0.1):
-        # template = frame[box_pred[1]:box_pred[3],box_pred[0]:box_pred[2]]
-            
-            # template = cv2.resize(template, t_shape)
-        # gt_box_dims=box_pred
-        # print(gt_box_dims[0])
+    
         if show:
             name = inp_path.split("\\")[0]
             pred_img = cv2.rectangle(source,(box_gt[0],box_gt[1]),(box_gt[2],box_gt[3]),(0,255,0),2)
