@@ -10,17 +10,15 @@ import os
 import numpy as np
 from matplotlib import pyplot as plt
 from utils import get_bounding_box_dims,IOU,affine_Inv
-def getTransform(W,thresh,frame,template,gt_box_dims):
+def getTransform(W,thresh,frame,template,gt_box_dims,itr_limit):
         error=1
         itr=0
-        while(error > thresh):
+        while(error > thresh and itr < itr_limit):
             """Warping """
             frame = cv2.warpAffine(frame, W, (frame.shape[1], frame.shape[0]))
             input_frame = frame[gt_box_dims[1]:gt_box_dims[3],gt_box_dims[0]:gt_box_dims[2]]
             """Compute Error"""
-            # template = cv2.resize(template,(input_frame.shape[1],input_frame.shape[0]))
             diff = template - input_frame
-            # ssd=np.sum(np.multiply(diff,diff))
             """Compute Warped Gradients"""
             gradX = cv2.Sobel(input_frame, cv2.CV_64F, 1, 0, ksize=5)
             gradY = cv2.Sobel(input_frame, cv2.CV_64F, 0, 1, ksize=5)
@@ -91,7 +89,7 @@ def getTransform(W,thresh,frame,template,gt_box_dims):
         return W,box_pred
         
 
-def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh,pyr_len=3):
+def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh,pyr_len,itr_limit,temp_update):
     
     image_list = os.listdir(inp_path)
     org_image = cv2.imread(os.path.join(inp_path,image_list[0]))
@@ -105,17 +103,12 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh,pyr_len=3
     iou_sum = 0.0
     
     for i in range(1,len(image_list)):
-
+        #print(i)
         frame = cv2.imread(os.path.join(inp_path,image_list[i]))
         frame = cv2.bilateralFilter(frame,15,75,75)
         rows, cols, ch = frame.shape
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         box_pred = [0,0,0,0]
-        
-   
-       
-        
-        
      
         scaled_frames=[frame]
         scaled_templates=[template]
@@ -139,20 +132,22 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh,pyr_len=3
           
             
         for idx in range(len(scaled_frames)-1,-1,-1):
+            #print(idx)
             frame=scaled_frames[idx]
             template=scaled_templates[idx]
             gt_box_dims=scaled_gt_box_dims[idx]
-            W,box_pred=getTransform(W,thresh,frame,template,gt_box_dims)
+            W,box_pred=getTransform(W,thresh,frame,template,gt_box_dims,itr_limit)
             
         
-        
-        
-                    
+                   
                 
         source = cv2.imread(os.path.join(inp_path,image_list[i]))
         box_gt= get_bounding_box_dims(gt_file_content, i+1)
         iou_sum += IOU(box_gt,box_pred)
         
+        if temp_update:
+            template = frame[box_pred[1]:box_pred[3],box_pred[0]:box_pred[2]]
+            gt_box_dims=box_pred
     
         if show:
             name = inp_path.split("\\")[0]
@@ -172,12 +167,15 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh,pyr_len=3
     return miou
             
 
-test_class = "Bolt"   
+test_class = "BlurCar2"   
 inp_path = test_class+"\img"
 gt_path = test_class+"\groundtruth_rect.txt"
 ssd = False
 show = True
 multiscale = False
 adaptive = True
-thresh=0.025
-print(matching_algo(inp_path, gt_path, ssd,show,multiscale,adaptive,thresh))
+thresh=0.035
+levels = 1
+itr_lim = 20
+temp_update = False
+print(matching_algo(inp_path, gt_path, ssd,show,multiscale,adaptive,thresh,levels,itr_lim,temp_update))
