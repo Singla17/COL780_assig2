@@ -9,7 +9,17 @@ import cv2
 import os
 import numpy as np
 from utils import get_bounding_box_dims,IOU,affine_Inv
-
+def point_selector(T_x_image):
+    points = cv2.selectROI(T_x_image)
+    
+    x_start = points[0]
+    x_end = points[0]+points[2]
+    y_start = points[1]
+    y_end = points[1]+ points[3]
+    x_range=[x_start,x_end]
+    y_range=[y_start,y_end]
+    
+    return x_range,y_range
 def getTransform(W,thresh,frame,template,gt_box_dims,itr_limit):
         error=1
         itr=0
@@ -176,15 +186,20 @@ if __name__ == "__main__":
         print("Unable to start camera")
     
     num_frame = 1
+    ret, frame = vid.read()
+    bbox=cv2.selectROI("frame",frame,False)
+    # print(bbox)
     while (True):
         
         ret, frame = vid.read()
+        
         if ret == True:
             cv2.imshow('frame', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):         ## GfG reference
                 break
         else:
             break
+        
         num_frame += 1
         
     vid.release()
