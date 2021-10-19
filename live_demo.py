@@ -6,39 +6,51 @@ Somanshu Singla 2018EE10314
 Lakshya Tangri  2018EE10222
 """
 import cv2
-import os
 import numpy as np
-from utils import get_bounding_box_dims,IOU,affine_Inv
-def point_selector(T_x_image):
-    points = cv2.selectROI(T_x_image)
+from utils import affine_Inv
+
+def getCorrectOrder(arr):
     
-    x_start = points[0]
-    x_end = points[0]+points[2]
-    y_start = points[1]
-    y_end = points[1]+ points[3]
-    x_range=[x_start,x_end]
-    y_range=[y_start,y_end]
-    
-    return x_range,y_range
+  if len(arr)<4:
+      return arr
+  cog=np.mean(arr,axis=0)
+  sign=[np.sign(pt - cog) for pt in arr]
+  map={}
+  for i in  range(len(sign)):
+    pt=sign[i]
+    if((pt==np.array([-1.0,-1.0])).all()):
+      map[0]=arr[i]
+    elif ((pt==np.array([1.0,-1.0])).all()):
+      map[1]=arr[i]
+    elif ((pt==np.array([1.0,1.0])).all()):
+      map[2]=arr[i]
+    elif ((pt==np.array([-1.0,1.0])).all()):
+      map[3]=arr[i]
+  res=[map[0],map[1],map[2],map[3]]
+  return np.array(res)
+
 def getTransform(W,thresh,frame,template,gt_box_dims,itr_limit):
         error=1
         itr=0
         while(error > thresh and itr < itr_limit):
+            
             """Warping """
             frame = cv2.warpAffine(frame, W, (frame.shape[1], frame.shape[0]))
             input_frame = frame[gt_box_dims[1]:gt_box_dims[3],gt_box_dims[0]:gt_box_dims[2]]
+            
             """Compute Error"""
+            if input_frame.shape != template.shape:
+                height,width =input_frame.shape
+                template = cv2.resize(template,(width,height))
             diff = template - input_frame
+            
             """Compute Warped Gradients"""
             gradX = cv2.Sobel(input_frame, cv2.CV_64F, 1, 0, ksize=5)
             gradY = cv2.Sobel(input_frame, cv2.CV_64F, 0, 1, ksize=5)
-            
-            
             ht, wt = template.shape
             Xc = np.tile(np.linspace(0, wt-1, wt), (ht, 1))
             Yc = np.tile(np.linspace(0, ht-1, ht), (wt, 1)).T
-            
-            
+                 
             """Compute Steepest Descent"""
             steepestDescentImages=[]
             steepestDescentImages.append(np.multiply(Xc,gradX))
@@ -48,9 +60,6 @@ def getTransform(W,thresh,frame,template,gt_box_dims,itr_limit):
             steepestDescentImages.append(gradX)
             steepestDescentImages.append(gradY)
        
-            
-            
-            
             """Compute Inverse Hessian"""
             l_2=[]
             for k in range(6):
@@ -74,18 +83,17 @@ def getTransform(W,thresh,frame,template,gt_box_dims,itr_limit):
                 # print("hessian is singular")
                 error=0
                 continue
+            
             """Compute delp by Multplying steepest Descent,Inverse Hessian,"""
             delp = np.matmul(np.linalg.inv(hess), l_3)
+            
             """Update p"""
             error = np.linalg.norm(delp)
             if(error>0.5):
                 break
-            W= W + np.array([[delp[0],delp[2],delp[4]], [delp[1],delp[3],delp[5]]]) 
-            
+            W= W + np.array([[delp[0],delp[2],delp[4]], [delp[1],delp[3],delp[5]]])    
             itr+=1
-                  # print(len(errors))
-        # print(len(x1))
-        # plt.plot(x,errors)
+       
         cornerPoints=np.array([[gt_box_dims[0],gt_box_dims[1]],[gt_box_dims[2],gt_box_dims[1]],[gt_box_dims[1],gt_box_dims[3]],[gt_box_dims[2],gt_box_dims[3]]])
         plotPts=[]
         for x,y in cornerPoints:
@@ -94,26 +102,15 @@ def getTransform(W,thresh,frame,template,gt_box_dims,itr_limit):
         plotPts=np.array(plotPts)   
         plotPts = np.round(plotPts.astype(int))
         
-        
         box_pred =[plotPts[0][0],plotPts[0][1],plotPts[-1][0],plotPts[-1][1]] 
-        return W,box_pred
+        
+        return W,box_pred,plotPts
         
 
-def matching_algo(frame,template,gt_box_dims,show,thresh,pyr_len,itr_limit,temp_update):
+def matching_algo(frame,gt_box_dims,thresh,pyr_len,itr_limit,temp_update,template):
     
-    #image_list = os.listdir(inp_path)
-    #org_image = cv2.imread(os.path.join(inp_path,image_list[0]))
-    #gt_file = open(gt_path,'r')
-    #gt_file_content = gt_file.readlines()
-    #gt_box_dims = get_bounding_box_dims(gt_file_content, 1)
-    #template = org_image[gt_box_dims[1]:gt_box_dims[3],gt_box_dims[0]:gt_box_dims[2]]
     source = frame
     template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-    
-    #iou_sum = 0.0
-    
-        #print(i)
-    #frame = cv2.imread(os.path.join(inp_path,image_list[i]))
     frame = cv2.bilateralFilter(frame,15,75,75)
     rows, cols, ch = frame.shape
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -145,36 +142,14 @@ def matching_algo(frame,template,gt_box_dims,show,thresh,pyr_len,itr_limit,temp_
         #print(idx)
         frame=scaled_frames[idx]
         template=scaled_templates[idx]
-        #gt_box_dims=scaled_gt_box_dims[idx]
-        W,box_pred=getTransform(W,thresh,frame,template,gt_box_dims,itr_limit)
+        gt_box_dims=scaled_gt_box_dims[idx]
+        W,box_pred,plotPts=getTransform(W,thresh,frame,template,gt_box_dims,itr_limit)
         
-    
-               
-            
-    #source = cv2.imread(os.path.join(inp_path,image_list[i]))
-    #box_gt= get_bounding_box_dims(gt_file_content, i+1)
-    #iou_sum += IOU(box_gt,box_pred)
     
     if temp_update:
-        template = frame[box_pred[1]:box_pred[3],box_pred[0]:box_pred[2]]
-        #gt_box_dims=box_pred
-
-    if show:
-        name = inp_path.split("\\")[0]
-        pred_img = cv2.rectangle(source,(box_gt[0],box_gt[1]),(box_gt[2],box_gt[3]),(0,255,0),2)
-        pred_img = cv2.rectangle(pred_img,(box_pred[0],box_pred[1]),(box_pred[2],box_pred[3]),(255,0,0),2)
-        pred_img=cv2.rectangle(pred_img,(gt_box_dims[0],gt_box_dims[1]),(gt_box_dims[2],gt_box_dims[3]),(0,0,255),2)
-        if not os.path.isdir(name+"/processed/"):
-            os.mkdir(name+"/processed/")
-            cv2.imwrite(name+"/processed/"+str(i)+".png",pred_img)
-        else: 
-            cv2.imwrite(name+"/processed/"+str(i)+".png",pred_img)
-           
-        
-    
-    #miou = iou_sum / (len(image_list)-1)
+        template = source[box_pred[1]:box_pred[3],box_pred[0]:box_pred[2]]
                  
-    return miou
+    return plotPts,template,box_pred
 
 
 ####################  Video Capture ##########################
@@ -187,13 +162,21 @@ if __name__ == "__main__":
     
     num_frame = 1
     ret, frame = vid.read()
-    bbox=cv2.selectROI("frame",frame,False)
-    # print(bbox)
+    bbox=list(cv2.selectROI("frame",frame,False))
+    bbox[2]= bbox[0]+bbox[2]
+    bbox[3]= bbox[1]+bbox[3]
+    template = frame[bbox[1]:bbox[3],bbox[0]:bbox[2]]
+    
+    #print(bbox)
     while (True):
         
         ret, frame = vid.read()
-        
+            
         if ret == True:
+            bounding_polygon,template,bbox=matching_algo(frame,bbox,0.035,1,20,True,template)
+            bounding_polygon = getCorrectOrder(bounding_polygon)
+            bounding_polygon = bounding_polygon.reshape((-1,1,2))
+            frame = cv2.polylines(frame,[bounding_polygon],True,(255,0,0),1)
             cv2.imshow('frame', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):         ## GfG reference
                 break

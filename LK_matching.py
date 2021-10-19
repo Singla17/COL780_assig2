@@ -151,7 +151,7 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh,itr_limit
     return miou
             
 
-test_class = "Liquor"   
+test_class = "BlurCar2"   
 inp_path = test_class+"\img"
 gt_path = test_class+"\groundtruth_rect.txt"
 ssd = False
