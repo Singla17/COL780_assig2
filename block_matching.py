@@ -109,14 +109,13 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive):
                 cv2.imwrite(name+"/processed/"+str(i)+".png",pred_img)
             else: 
                 cv2.imwrite(name+"/processed/"+str(i)+".png",pred_img)
-        
     
     miou = iou_sum / (len(image_list)-1)
                  
     return miou
             
-"""   
-test_class = "Bolt"   
+ 
+test_class = "Liquor"   
 inp_path = test_class+"\img"
 gt_path = test_class+"\groundtruth_rect.txt"
 ssd = False
@@ -124,4 +123,3 @@ show = True
 multiscale = False
 adaptive = True
 print(matching_algo(inp_path, gt_path, ssd,show,multiscale,adaptive))
-"""

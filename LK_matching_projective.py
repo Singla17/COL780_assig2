@@ -153,7 +153,6 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh,itr_limit
             name = inp_path.split("\\")[0]
             pred_img = cv2.rectangle(source,(box_gt[0],box_gt[1]),(box_gt[2],box_gt[3]),(0,255,0),2)
             pred_img = cv2.rectangle(pred_img,(box_pred[0],box_pred[1]),(box_pred[2],box_pred[3]),(255,0,0),2)
-            pred_img=cv2.rectangle(pred_img,(gt_box_dims[0],gt_box_dims[1]),(gt_box_dims[2],gt_box_dims[3]),(0,0,255),2)
             if not os.path.isdir(name+"/processed/"):
                 os.mkdir(name+"/processed/")
                 cv2.imwrite(name+"/processed/"+str(i)+".png",pred_img)
@@ -167,14 +166,14 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh,itr_limit
     return miou
             
 
-test_class = "Liquor"   
+test_class = "Bolt"   
 inp_path = test_class+"\img"
 gt_path = test_class+"\groundtruth_rect.txt"
 ssd = False
 show = True
 multiscale = False
 adaptive = True
-thresh=0.025
-itr_lim = 100
+thresh=0.035
+itr_lim = 15
 temp_update = False
 print(matching_algo(inp_path, gt_path, ssd,show,multiscale,adaptive,thresh,itr_lim,temp_update))

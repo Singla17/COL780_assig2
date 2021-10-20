@@ -13,20 +13,23 @@ def getCorrectOrder(arr):
     
   if len(arr)<4:
       return arr
+  
   cog=np.mean(arr,axis=0)
   sign=[np.sign(pt - cog) for pt in arr]
-  map={}
+  map_u={}
   for i in  range(len(sign)):
     pt=sign[i]
     if((pt==np.array([-1.0,-1.0])).all()):
-      map[0]=arr[i]
+      map_u[0]=arr[i]
     elif ((pt==np.array([1.0,-1.0])).all()):
-      map[1]=arr[i]
+      map_u[1]=arr[i]
     elif ((pt==np.array([1.0,1.0])).all()):
-      map[2]=arr[i]
+      map_u[2]=arr[i]
     elif ((pt==np.array([-1.0,1.0])).all()):
-      map[3]=arr[i]
-  res=[map[0],map[1],map[2],map[3]]
+      map_u[3]=arr[i]
+  if len(map_u.keys())<4:
+      return arr
+  res=[map_u[0],map_u[1],map_u[2],map_u[3]]
   return np.array(res)
 
 def getTransform(W,thresh,frame,template,gt_box_dims,itr_limit):
@@ -167,16 +170,21 @@ if __name__ == "__main__":
     bbox[3]= bbox[1]+bbox[3]
     template = frame[bbox[1]:bbox[3],bbox[0]:bbox[2]]
     
-    #print(bbox)
     while (True):
         
         ret, frame = vid.read()
             
         if ret == True:
-            bounding_polygon,template,bbox=matching_algo(frame,bbox,0.035,1,20,True,template)
-            bounding_polygon = getCorrectOrder(bounding_polygon)
-            bounding_polygon = bounding_polygon.reshape((-1,1,2))
-            frame = cv2.polylines(frame,[bounding_polygon],True,(255,0,0),1)
+            try: 
+                bounding_polygon,template,bbox=matching_algo(frame,bbox,0.035,1,15,True,template)
+                bounding_polygon = getCorrectOrder(bounding_polygon)
+                bounding_polygon = bounding_polygon.reshape((-1,1,2))
+                frame = cv2.polylines(frame,[bounding_polygon],True,(255,0,0),1)
+            except:
+                print("Some error occured")
+                break
+                
+            
             cv2.imshow('frame', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):         ## GfG reference
                 break

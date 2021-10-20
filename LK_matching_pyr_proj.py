@@ -8,7 +8,6 @@ Lakshya Tangri  2018EE10222
 import cv2
 import os
 import numpy as np
-from matplotlib import pyplot as plt
 from utils import get_bounding_box_dims,IOU,projective_Inv
 def getWarp(p):
     return np.array([[p[0],p[1],p[2]],
@@ -20,6 +19,9 @@ def getTransform(W,p,thresh,frame,template,gt_box_dims,itr_limit):
             frame = cv2.warpPerspective(frame, W, (frame.shape[1], frame.shape[0]))
             input_frame = frame[gt_box_dims[1]:gt_box_dims[3],gt_box_dims[0]:gt_box_dims[2]]
             """Compute Error"""
+            if input_frame.shape != template.shape:
+                height,width =input_frame.shape
+                template = cv2.resize(template,(width,height))
             diff = template - input_frame
             
             """Compute Warped Gradients"""
@@ -164,7 +166,6 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh,pyr_len,i
             name = inp_path.split("\\")[0]
             pred_img = cv2.rectangle(source,(box_gt[0],box_gt[1]),(box_gt[2],box_gt[3]),(0,255,0),2)
             pred_img = cv2.rectangle(pred_img,(box_pred[0],box_pred[1]),(box_pred[2],box_pred[3]),(255,0,0),2)
-            pred_img=cv2.rectangle(pred_img,(gt_box_dims[0],gt_box_dims[1]),(gt_box_dims[2],gt_box_dims[3]),(0,0,255),2)
             if not os.path.isdir(name+"/processed/"):
                 os.mkdir(name+"/processed/")
                 cv2.imwrite(name+"/processed/"+str(i)+".png",pred_img)
@@ -178,7 +179,7 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh,pyr_len,i
     return miou
             
 
-test_class = "BlurCar2"   
+test_class = "Bolt"   
 inp_path = test_class+"\img"
 gt_path = test_class+"\groundtruth_rect.txt"
 ssd = False
@@ -186,7 +187,7 @@ show = True
 multiscale = False
 adaptive = True
 thresh=0.035
-levels = 1
-itr_lim = 20
+levels = 0
+itr_lim = 15
 temp_update = False
 print(matching_algo(inp_path, gt_path, ssd,show,multiscale,adaptive,thresh,levels,itr_lim,temp_update))

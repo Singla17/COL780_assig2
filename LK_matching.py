@@ -47,6 +47,9 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh,itr_limit
             input_frame = frame[gt_box_dims[1]:gt_box_dims[3],gt_box_dims[0]:gt_box_dims[2]]
             """Compute Error"""
             # template = cv2.resize(template,(input_frame.shape[1],input_frame.shape[0]))
+            if input_frame.shape != template.shape:
+                height,width =input_frame.shape
+                template = cv2.resize(template,(width,height))
             diff = template - input_frame
             # ssd=np.sum(np.multiply(diff,diff))
             """Compute Warped Gradients"""
@@ -117,13 +120,8 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh,itr_limit
             plotPts.append(pos)
         plotPts=np.array(plotPts)   
         plotPts = np.round(plotPts.astype(int))
-        
-        
         box_pred =[plotPts[0][0],plotPts[0][1],plotPts[-1][0],plotPts[-1][1]] 
         
-        
-                    
-                
         source = cv2.imread(os.path.join(inp_path,image_list[i]))
         box_gt= get_bounding_box_dims(gt_file_content, i+1)
         iou_sum += IOU(box_gt,box_pred)
@@ -137,14 +135,11 @@ def matching_algo(inp_path,gt_path,ssd,show,multiscale,adaptive,thresh,itr_limit
             name = inp_path.split("\\")[0]
             pred_img = cv2.rectangle(source,(box_gt[0],box_gt[1]),(box_gt[2],box_gt[3]),(0,255,0),2)
             pred_img = cv2.rectangle(pred_img,(box_pred[0],box_pred[1]),(box_pred[2],box_pred[3]),(255,0,0),2)
-            pred_img=cv2.rectangle(pred_img,(gt_box_dims[0],gt_box_dims[1]),(gt_box_dims[2],gt_box_dims[3]),(0,0,255),2)
             if not os.path.isdir(name+"/processed/"):
                 os.mkdir(name+"/processed/")
                 cv2.imwrite(name+"/processed/"+str(i)+".png",pred_img)
             else: 
-                cv2.imwrite(name+"/processed/"+str(i)+".png",pred_img)
-           
-        
+                cv2.imwrite(name+"/processed/"+str(i)+".png",pred_img)     
     
     miou = iou_sum / (len(image_list)-1)
                  
@@ -159,6 +154,6 @@ show = True
 multiscale = False
 adaptive = True
 thresh=0.025
-itr_lim = 100
+itr_lim = 15
 temp_update = False
 print(matching_algo(inp_path, gt_path, ssd,show,multiscale,adaptive,thresh,itr_lim,temp_update))
