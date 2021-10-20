@@ -1,6 +1,6 @@
 # Template Tracking
 
-In this work we do object detection using classical computer vision methods like Block-based matching (sliding-window method) and Lucas-Kanade Algorithm. The problem statement can be found [here](./Assignment_2.pdf) and detailed discussion can be found [here](./Report.pdf).
+In this work we do object detection using classical computer vision methods like Block-based matching (sliding-window method) and Lucas-Kanade Algorithm. The problem statement can be found [here](./Problem Statement.pdf) and detailed discussion can be found [here](./Report.pdf).
 
 ## Running Mode
 
